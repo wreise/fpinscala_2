@@ -17,18 +17,108 @@ trait Stream[+A] {
     case Empty => None
     case Cons(h, t) => if (f(h())) Some(h()) else t().find(f)
   }
-  def take(n: Int): Stream[A] = ???
 
-  def drop(n: Int): Stream[A] = ???
+  def toList: List[A] = this match{
+    case Cons(a:A, as: Stream[A]) => a() :: as().toList/*scala.List[A](a(), as().toList)*/
+    case _  => List(): List[A]
+  }
+  /*def toList_fold: List[A] = {
+    this.foldRight(List(): List[A])(( a: A, b: => List[A]) => a :: b )
+  }*/
 
-  def takeWhile(p: A => Boolean): Stream[A] = ???
+  /*def take(n: Int): Stream[A] = {
+    def helper(k: Int, original: Stream[A]): Stream[A] = original match{
+      case Cons(h,e) => Stream(h, helper(k-1, e()))
+      case _ => Stream(): Stream[A]
+    }
+    helper(n, this)
+  }*/
 
-  def forAll(p: A => Boolean): Boolean = ???
+  def drop(n: Int): Stream[A] = {
+    def helper(k: Int, s: Stream[A]): Stream[A] = k match {
+      case 0 => s
+      case _ => s match {
+        case Cons(a, l) => helper(k-1,l())
+        case Empty => Empty:Stream[A]
+      }
+    }
+    helper(n, this)
+  }
 
-  def headOption: Option[A] = ???
+  def takeWhile(p: A => Boolean): Stream[A] = {
+    /*def helper(taken: Stream[A], feed: Stream[A]): Stream[A] = feed match{
+      case Cons(a,l) => if (p(a)) helper(Cons(a,taken()), l()) else taken
+      case Empty => taken
+    }*/
+    def helper(feed: Stream[A]): Stream[A] = feed match{
+      case Cons(a, l) => {
+        if (p(a())) {
+          Cons(a, () => helper( l() ) )
+        }
+        else {
+          Empty:Stream[A]
+        }
+      }
+      case Empty => Empty:Stream[A]
+    }
+    helper(this)
+  }
+
+  def takeWhile_fold(p: A => Boolean): Stream[A] = {
+    /* If the first element satisfies the condition, return the stream.
+    Otherwise, return an empty one. */
+    def help(a:A, b: =>Stream[A]): Stream[A] = {
+      if (p(a)) Cons(()=>a,()=>b)
+      else Empty: Stream[A]
+    }
+    this.foldRight(Stream():Stream[A])(help)
+  }
+
+  /*Question: Why don't we write (...&& l() )? According to the definition in foldRight, l should be evaluated.*/
+  def forAll(p: A => Boolean): Boolean = {
+    this.foldRight( true )( (a: A, l) => ( p(a) && l ))
+  }
+
+  def headOption: Option[A] = {
+    def helper(a: A, b: =>Option[A]):Option[A] = {
+      Some(a)
+    }
+    this.foldRight(None:Option[A])(helper)
+  }
 
   // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
   // writing your own function signatures.
+
+  /*TO TEST*/
+  def map[B](f: A => B): Stream[B] = {
+    def f_(a: A, b: => Stream[B]): Stream[B]= {
+      Cons( () => f(a), () => b)
+    }
+    this.foldRight(Empty: Stream[B])(f_)
+  }
+
+  /*TO TEST*/
+  def filter(p: A => Boolean): Stream[A] = {
+    def help(a:A, b: =>Stream[A]): Stream[A] = {
+      if (p(a)) Cons(()=>a, ()=>b)
+      else b
+    }
+    this.foldRight(Empty: Stream[A])(help)
+  }
+  /* TEST, Is it strict or not? */
+  def append[B>:A](a: => Stream[B]): Stream[B] = {
+    def help(c: B, b: => Stream[B]): Stream[B] = {
+      Cons(() => c, () => b)
+    }
+    this.foldRight(a: Stream[B])(help)
+  }
+  /* TEST */
+  def flatMap[B](f: A => Stream[B]): Stream[B] = {
+    def help(a:A, b: => Stream[B]): Stream[B] = {
+      f(a).append(b)
+    }
+    this.foldRight(Empty: Stream[B])(help)
+  }
 
   def startsWith[B](s: Stream[B]): Boolean = ???
 }
