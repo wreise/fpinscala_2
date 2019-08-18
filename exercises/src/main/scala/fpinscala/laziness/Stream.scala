@@ -19,20 +19,20 @@ trait Stream[+A] {
   }
 
   def toList: List[A] = this match{
-    case Cons(a:A, as: Stream[A]) => a() :: as().toList/*scala.List[A](a(), as().toList)*/
+    case Cons(a:A, as) => a() :: as().toList/*scala.List[A](a(), as().toList)*/
     case _  => List(): List[A]
   }
   /*def toList_fold: List[A] = {
     this.foldRight(List(): List[A])(( a: A, b: => List[A]) => a :: b )
   }*/
 
-  /*def take(n: Int): Stream[A] = {
-    def helper(k: Int, original: Stream[A]): Stream[A] = original match{
-      case Cons(h,e) => Stream(h, helper(k-1, e()))
+  def take(n: Int): Stream[A] = {
+    def helper(k: Int, original: => Stream[A]): Stream[A] = original match{
+      case Cons(h,e) => Cons(h, () => helper(k-1, e()))
       case _ => Stream(): Stream[A]
     }
     helper(n, this)
-  }*/
+  }
 
   def drop(n: Int): Stream[A] = {
     def helper(k: Int, s: Stream[A]): Stream[A] = k match {
@@ -108,7 +108,7 @@ trait Stream[+A] {
   /* TEST, Is it strict or not? */
   def append[B>:A](a: => Stream[B]): Stream[B] = {
     def help(c: B, b: => Stream[B]): Stream[B] = {
-      Cons(() => c, () => b)
+      Cons(()=> c, () => b)
     }
     this.foldRight(a: Stream[B])(help)
   }
@@ -139,7 +139,23 @@ object Stream {
     else cons(as.head, apply(as.tail: _*))
 
   val ones: Stream[Int] = Stream.cons(1, ones)
-  def from(n: Int): Stream[Int] = ???
 
-  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = ???
+  def constant[A](a:A) : Stream[A] = {
+    Cons(() => a, () => constant(a))
+    lazy val l: Stream[A] = Cons(() => a, () => l)
+    l
+  }
+
+  def from(n: Int): Stream[Int] = {
+    Cons(() => n, () => from(n+1))
+  }
+
+  def fib(): Stream[Int] = {
+    unfold((0, 1))((l :Tuple2(Int)) => Some((, (l, k+l))))
+  }
+
+  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = {
+    lazy val l: Option[(A,S)] = f(z)
+    l.map((a:A,s:S) => Cons( () => a, () => unfold(s)(f)))
+  }
 }

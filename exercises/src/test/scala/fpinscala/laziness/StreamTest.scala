@@ -46,7 +46,7 @@ class StreamTest extends FlatSpec {
 
   "take" should "take the first elements" in {
     val s: Stream[Int] = Stream(1,2,3)
-    /*assert(s.take(2) == Stream(1,2))*/
+    assert(s.take(2) == Stream(1,2))
 
   }
 
@@ -56,6 +56,14 @@ class StreamTest extends FlatSpec {
 
     assert(l.headOption == Some(1))
     assert(l2.headOption == (None: Option[Int]))
+  }
+
+  "constant" should "produce a constant, infinite stream of elements" in {
+    assert(Stream.constant[Int](2).take(3).toList == List(2,2,2))
+  }
+
+  "from" should "produce an increasing sequence" in {
+    assert(Stream.from(2).take(3).toList == List(2,3,4))
   }
 
   it should "startsWith" in {
