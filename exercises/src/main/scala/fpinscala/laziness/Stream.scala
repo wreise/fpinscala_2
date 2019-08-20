@@ -154,13 +154,19 @@ trait Stream[+A] {
   }
 
   def zipAll_bad[B](s2: Stream[B]): Stream[(Option[A], Option[B])] = {
-    def f(ab: Tuple2[Stream[A], Stream[B]]): Option[((Stream[A], Stream[B]),(Option[A], Option[B]))] = ab._1 match {
-      case Cons(ah, at) => ab._2 match {
-        case Cons(bh, bt) => Some(((at(),bt()),(Some(ah()), Some(bh()))))
-        case Empty => Some(((at(), Empty), (Some(ah()), None)))
-      }
-      case
+
+    def fb[C,D](ao:Option[C], as:Stream[C])(bs: Stream[D]): Option[((Stream[C], Stream[D]), (Option[C], Option[D]))] = bs match{
+      case Cons(bh, bt) => Some(((as, bt()),(ao, Some(bh()))))
+      case Empty => ao match {
+        case Some(_) => Some(((as, Empty),(ao, None)))
+        case None => None}
     }
+
+    def f(ab: Tuple2[Stream[A], Stream[B]]): Option[((Stream[A], Stream[B]),(Option[A], Option[B]))] = ab._1 match {
+      case Cons(ah, at) => fb(Some(ah()), at())(ab._2)
+      case Empty => fb(None, Empty)(ab._2)
+      }
+    unfold((this, s2))(f)
   }
 
 
