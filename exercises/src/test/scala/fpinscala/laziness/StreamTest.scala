@@ -66,8 +66,38 @@ class StreamTest extends FlatSpec {
     assert(Stream.from(2).take(3).toList == List(2,3,4))
   }
 
-  it should "startsWith" in {
-
+  "map" should "map all elements using a function" in {
+    val l: Stream[Int] = Stream(1,2,3)
+    val f = (a:Int) => a+1
+    assert(l.map(f).toList == List(2,3,4))
   }
 
+  "filter" should "leave in the stream the elements that satisfy the condition" in {
+    val l: Stream[Int] = Stream(1,2,3,5)
+    val f = (a:Int) => (a-1)%2 ==0
+    assert(l.filter(f).toList == List(1,3,5))
+  }
+
+  "append" should "append a stream to another one" in {
+    val l: Stream[Int] = Stream(1,2,3,5)
+    val l2: Stream[Int] = Stream(-1,2)
+    assert(l.append(l2).toList == List(1,2,3,5,-1,2))
+  }
+
+  "flatMap" should "produce a stream from each element and append it" in {
+    val f = (a: Int) => Stream(a+1,a+3,a-1)
+    val l: Stream[Int] = Stream(1,2)
+    assert(l.flatMap(f).toList == List(2,4,0,3,5,1))
+  }
+
+  "unfold" should "produce a stream, from a hidden state" in {
+    val f = (a: Int) => (if (a<5) Some((a, a+1)) else None)
+    assert(Stream.unfold(1)(f).toList == List(1,2,3,4))
+  }
+
+  "mapUnfold" should "behave as map" in {
+    val l: Stream[Int] = Stream(1,2,3)
+    val f = (a:Int) => a+1
+    assert(Stream.mapUnfold(l)(f).toList == l.map(f).toList)
+  }
 }

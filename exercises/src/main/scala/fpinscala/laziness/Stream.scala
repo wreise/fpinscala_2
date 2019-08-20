@@ -89,7 +89,6 @@ trait Stream[+A] {
   // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
   // writing your own function signatures.
 
-  /*TO TEST*/
   def map[B](f: A => B): Stream[B] = {
     def f_(a: A, b: => Stream[B]): Stream[B]= {
       Cons( () => f(a), () => b)
@@ -97,7 +96,6 @@ trait Stream[+A] {
     this.foldRight(Empty: Stream[B])(f_)
   }
 
-  /*TO TEST*/
   def filter(p: A => Boolean): Stream[A] = {
     def help(a:A, b: =>Stream[A]): Stream[A] = {
       if (p(a)) Cons(()=>a, ()=>b)
@@ -105,20 +103,66 @@ trait Stream[+A] {
     }
     this.foldRight(Empty: Stream[A])(help)
   }
-  /* TEST, Is it strict or not? */
+  /* Is it strict or not? */
   def append[B>:A](a: => Stream[B]): Stream[B] = {
     def help(c: B, b: => Stream[B]): Stream[B] = {
       Cons(()=> c, () => b)
     }
     this.foldRight(a: Stream[B])(help)
   }
-  /* TEST */
+
   def flatMap[B](f: A => Stream[B]): Stream[B] = {
     def help(a:A, b: => Stream[B]): Stream[B] = {
       f(a).append(b)
     }
     this.foldRight(Empty: Stream[B])(help)
   }
+
+  /* ------------ Unfold ------------- */
+
+  def mapUnfold[B](f: A => B): Stream[B] = {
+    def helper(a: Stream[A]): Option[(B, Stream[A])] = a match{
+      case Cons(ah, at) => Some((f(ah()), at()))
+      case Empty => None: Option[(B,Stream[A])]
+    }
+    unfold(this)(helper)
+  }
+
+  /* Test */
+  def takeUnfold_bad(n: Int): Stream[A] = this {
+    //    def f(k: Int, as: Stream[A]): Option[(A, (Int, Stream[A]))] = as match {
+    //      case Cons(ah, at) => if (k<=n) Some((ah():A, (k+1, at()))): Option[(A, (Int, Stream[A]))] else None: Option[(A, (Int, Stream[A]))]
+    //      case Empty => None: Option[(A, (Int, Stream[A]))]
+    //    }
+    def f(kas: Tuple2[Int,Stream[A]]): Option[(A, (Int, Stream[A]))] = kas._2 match {
+      case Cons(ah, at) => if (kas._1<=n) Some((ah():A, (kas._1+1, at()))): Option[(A, (Int, Stream[A]))] else None: Option[(A, (Int, Stream[A]))]
+      case Empty => None: Option[(A, (Int, Stream[A]))]
+    }
+    unfold(1, this)(f)
+  }
+
+  /* Test */
+  def zipWith_bad[B,C](a: Stream[A], b: Stream[B])(f: (A,B) => C): Stream[C] = {
+    def h(ab: Tuple2[Stream[A], Stream[B]]): Option[(C,(Stream[A],Stream[B]))] = a match {
+      case Cons(ah, at) => b match {
+        case Cons(bh, bt) => Some((f(ah(), bh()), (at(), bt())))
+        case Empty => None
+      }
+      case Empty => None
+    }
+    unfold((a,b))(h)
+  }
+
+  def zipAll_bad[B](s2: Stream[B]): Stream[(Option[A], Option[B])] = {
+    def f(ab: Tuple2[Stream[A], Stream[B]]): Option[((Stream[A], Stream[B]),(Option[A], Option[B]))] = ab._1 match {
+      case Cons(ah, at) => ab._2 match {
+        case Cons(bh, bt) => Some(((at(),bt()),(Some(ah()), Some(bh()))))
+        case Empty => Some(((at(), Empty), (Some(ah()), None)))
+      }
+      case
+    }
+  }
+
 
   def startsWith[B](s: Stream[B]): Boolean = ???
 }
@@ -151,11 +195,14 @@ object Stream {
   }
 
   def fib(): Stream[Int] = {
-    unfold((0, 1))((l :Tuple2(Int)) => Some((, (l, k+l))))
+    /*unfold((0, 1))((l :Tuple2(Int)) => Some((, (l, k+l))))*/
+    unfold((0,1))((l :Tuple2[Int,Int]) => Some((l._2+l._1, (l._2, l._2+l._1))))
   }
 
   def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = {
     lazy val l: Option[(A,S)] = f(z)
-    l.map((a:A,s:S) => Cons( () => a, () => unfold(s)(f)))
+    /*l.map((a:A,s:S) => cons(a, unfold(s)(f))).getOrElse(empty: Stream[A])*/
+    l.map((t:Tuple2[A,S]) => cons(t._1, unfold(t._2)(f))).getOrElse(empty: Stream[A])
   }
+
 }
