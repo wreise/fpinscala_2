@@ -46,7 +46,7 @@ class StreamTest extends FlatSpec {
 
   "take" should "take the first elements" in {
     val s: Stream[Int] = Stream(1,2,3)
-    assert(s.take(2) == Stream(1,2))
+    assert(s.take(2).toList == Stream(1,2).toList)
 
   }
 
@@ -98,6 +98,6 @@ class StreamTest extends FlatSpec {
   "mapUnfold" should "behave as map" in {
     val l: Stream[Int] = Stream(1,2,3)
     val f = (a:Int) => a+1
-    assert(Stream.mapUnfold(l)(f).toList == l.map(f).toList)
+    assert(l.mapUnfold(f).toList == l.map(f).toList)
   }
 }

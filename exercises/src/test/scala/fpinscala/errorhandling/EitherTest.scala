@@ -21,6 +21,7 @@ class EitherTest extends FlatSpec {
   it should "flatMap" in {
 
   }*/
+
   "map" should "apply the function if possible, otherwise, carry the error" in {
     val i1: Either[String, Double] = Right(2.0)
     val e1: Either[String, Double] = Left("Whatever")

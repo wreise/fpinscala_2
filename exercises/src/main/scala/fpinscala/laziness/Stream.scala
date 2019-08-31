@@ -5,7 +5,7 @@ trait Stream[+A] {
 
   def foldRight[B](z: => B)(f: (A, => B) => B): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
     this match {
-      case Cons(h,t) => f(h(), t().foldRight(z)(f)) // If `f` doesn't evaluate its second argument, the recursion never occurs.
+      case Cons(h:A,t) => f(h(), t().foldRight(z)(f)) // If `f` doesn't evaluate its second argument, the recursion never occurs.
       case _ => z
     }
 
@@ -19,7 +19,7 @@ trait Stream[+A] {
   }
 
   def toList: List[A] = this match{
-    case Cons(a:A, as) => a() :: as().toList/*scala.List[A](a(), as().toList)*/
+    case Cons(a, as) => a() :: as().toList/*scala.List[A](a(), as().toList)*/
     case _  => List(): List[A]
   }
   /*def toList_fold: List[A] = {
@@ -28,12 +28,12 @@ trait Stream[+A] {
 
   def take(n: Int): Stream[A] = {
     def helper(k: Int, original: => Stream[A]): Stream[A] = original match{
-      case Cons(h,e) => Cons(h, () => helper(k-1, e()))
-      case _ => Stream(): Stream[A]
+      case Cons(h,e) => if (k>0) Cons(h, () => helper(k-1, e())) else Empty
+      case _ => Empty: Stream[A]
     }
     helper(n, this)
   }
-
+ /* RUN the test*/
   def drop(n: Int): Stream[A] = {
     def helper(k: Int, s: Stream[A]): Stream[A] = k match {
       case 0 => s
@@ -68,8 +68,8 @@ trait Stream[+A] {
     /* If the first element satisfies the condition, return the stream.
     Otherwise, return an empty one. */
     def help(a:A, b: =>Stream[A]): Stream[A] = {
-      if (p(a)) Cons(()=>a,()=>b)
-      else Empty: Stream[A]
+      if (p(a)) cons(a, b)
+      else empty: Stream[A]
     }
     this.foldRight(Stream():Stream[A])(help)
   }
@@ -129,7 +129,7 @@ trait Stream[+A] {
   }
 
   /* Test */
-  def takeUnfold_bad(n: Int): Stream[A] = this {
+  /*def takeUnfold_bad(n: Int): Stream[A] = this {
     //    def f(k: Int, as: Stream[A]): Option[(A, (Int, Stream[A]))] = as match {
     //      case Cons(ah, at) => if (k<=n) Some((ah():A, (k+1, at()))): Option[(A, (Int, Stream[A]))] else None: Option[(A, (Int, Stream[A]))]
     //      case Empty => None: Option[(A, (Int, Stream[A]))]
@@ -151,9 +151,9 @@ trait Stream[+A] {
       case Empty => None
     }
     unfold((a,b))(h)
-  }
+  }*/
 
-  def zipAll_bad[B](s2: Stream[B]): Stream[(Option[A], Option[B])] = {
+  /*def zipAll_bad[B](s2: Stream[B]): Stream[(Option[A], Option[B])] = {
 
     def fb[C,D](ao:Option[C], as:Stream[C])(bs: Stream[D]): Option[((Stream[C], Stream[D]), (Option[C], Option[D]))] = bs match{
       case Cons(bh, bt) => Some(((as, bt()),(ao, Some(bh()))))
@@ -167,11 +167,12 @@ trait Stream[+A] {
       case Empty => fb(None, Empty)(ab._2)
       }
     unfold((this, s2))(f)
-  }
+  }*/
 
 
   def startsWith[B](s: Stream[B]): Boolean = ???
 }
+
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
 
@@ -191,13 +192,13 @@ object Stream {
   val ones: Stream[Int] = Stream.cons(1, ones)
 
   def constant[A](a:A) : Stream[A] = {
-    Cons(() => a, () => constant(a))
-    lazy val l: Stream[A] = Cons(() => a, () => l)
-    l
+    cons( a,  constant(a))
+    /*lazy val l: Stream[A] = Cons(() => a, () => l)
+    l*/
   }
 
   def from(n: Int): Stream[Int] = {
-    Cons(() => n, () => from(n+1))
+    cons( n, from(n+1))
   }
 
   def fib(): Stream[Int] = {
