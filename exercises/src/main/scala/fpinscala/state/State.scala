@@ -172,7 +172,7 @@ object State {
     _ <- set(f(s))
   } yield ()
 
-  def update(input: Input, state: State[Machine, (Int,Int)]): State[Machine, (Int,Int)] = input match {
+  /*def update(input: Input, state: State[Machine, (Int,Int)]): State[Machine, (Int,Int)] = input match {
     case Coin => insertCoin(state)
     case turnKnob => turnKnob(state)
   }
@@ -196,5 +196,5 @@ object State {
 
   def stateFromMachine: State[Machine, (Int, Int)] = {
     State(s => ((s.coins, s.candies), s))
-  }
+  }*/
 }

@@ -3,6 +3,14 @@ package fpinscala.laziness
 import Stream._
 trait Stream[+A] {
 
+  def scanRight[B](z: => B)(f:(A, =>B) => B): Stream[B] = {
+    val res = this.foldRight((z, Stream(z)))((a,b) => {
+      val v = f(a, b._1)
+      (v, cons(v, b._2))
+    })
+    res._2
+  }
+
   def foldRight[B](z: => B)(f: (A, => B) => B): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
     this match {
       case Cons(h:A,t) => f(h(), t().foldRight(z)(f)) // If `f` doesn't evaluate its second argument, the recursion never occurs.
@@ -211,5 +219,4 @@ object Stream {
     /*l.map((a:A,s:S) => cons(a, unfold(s)(f))).getOrElse(empty: Stream[A])*/
     l.map((t:Tuple2[A,S]) => cons(t._1, unfold(t._2)(f))).getOrElse(empty: Stream[A])
   }
-
 }
