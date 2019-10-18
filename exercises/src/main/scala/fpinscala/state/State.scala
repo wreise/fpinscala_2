@@ -1,5 +1,11 @@
 package fpinscala.state
 
+/* Ideas:
+1. Generate, and keep track of the state, to keep the generation pure,
+2. Map, sequence: describe calls to rng, without doing it. Ie, define a sequence of operations
+3. FlatMap: Generate an
+ */
+
 
 trait RNG {
   def nextInt: (Int, RNG) // Should generate a random `Int`. We'll later define other functions in terms of `nextInt`.
@@ -121,7 +127,6 @@ object RNG {
       if (i+ (n-1) - mod >= 0) (mod,rng) else nonNegativeLessThan(n)(rng)}}
     flatMap(RNG.int)(f)
   }
-
 }
 import State.unit
 
@@ -141,8 +146,6 @@ case class State[S,+A](run: S => (A, S)) {
       f(a).run(rs)
     })
 
-  //def unit[A](a: A): State[S, A] = State(s => (a,s))
-
 }
 
 sealed trait Input
@@ -150,7 +153,16 @@ case object Coin extends Input
 case object Turn extends Input
 
 case class Machine(locked: Boolean, candies: Int, coins: Int) {
-  //def unlock: Machine = Machine(true, candies, coins)
+  //def unlock: Machine = Machine(false, candies, coins)
+  def turnKnob: Machine = {
+    if (!locked) Machine(true, candies-1, coins)
+    else Machine(true, candies, coins)
+  }
+  def insertCoin: Machine = Machine(false, candies, coins+1)
+  def mapMachine(f: Machine => Machine): Machine = {
+    if (candies>0) f(this)
+    else this
+  }
 }
 
 object State {
@@ -172,12 +184,22 @@ object State {
     _ <- set(f(s))
   } yield ()
 
-  /*def update(input: Input, state: State[Machine, (Int,Int)]): State[Machine, (Int,Int)] = input match {
-    case Coin => insertCoin(state)
-    case turnKnob => turnKnob(state)
+  def update(i: Input): (Machine => Machine) = i match {
+    case Coin => (m => m.mapMachine(m2 => m2.insertCoin))
+    case Turn => (m => m.mapMachine(m2 => m2.turnKnob))
   }
 
-  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = {
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = for {
+    s1 <- sequence( inputs.map(i => modify(update(i))) )
+    s2 <- get
+  } yield (s2.candies, s2.coins)
+
+  /*def updateIfCandyLeft(input: Input, state: State[Machine, (Int,Int)]): State[Machine, (Int,Int)] = input match {
+      case Coin => State((s: Machine) => (a, Machine(false, s.candies, s.coins)))
+      case turnKnob => turnKnob(state)
+  }*/
+
+  /*def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = {
     inputs.foldRight(State(m => ((0,0), m:Machine)))((i, s) => update(i, s))
   }
 

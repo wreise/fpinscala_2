@@ -68,7 +68,13 @@ class RNGTest extends FlatSpec {
 
     assert(RNG.sequence(List(rng1, rng2, rng3))(rngSimple) == RNG.unit(List(2, 3, 17))(rngSimple))
     assert(RNG.sequenceFoldRight(List(rng1, rng2, rng3))(rngSimple) == RNG.unit(List(2, 3, 17))(rngSimple))
+  }
 
+  "simulateMachine" should "simulate the candy machine and count the outputs" in {
+    val initialState = Machine(false, 5, 10)
+    val l = State.simulateMachine(List(Turn, Turn, Coin, Turn, Coin, Turn)).run(initialState)
+    //print(l)
+    assert(l._1 == (2,12))
   }
 
 }

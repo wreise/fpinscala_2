@@ -4,12 +4,21 @@ import Stream._
 trait Stream[+A] {
 
   def scanRight[B](z: => B)(f:(A, =>B) => B): Stream[B] = {
-    val res = this.foldRight((z, Stream(z)))((a,b) => {
+    val res = this.foldRight((z, Stream(z)))((a, b) => {
       val v = f(a, b._1)
       (v, cons(v, b._2))
     })
     res._2
+    // It is impossible with unfold, because the current state should take information from the state on the right, while in unfold, it takes it from the left.
   }
+
+  /*def scanLeft[S](a:S)(f: (S,A) => S): Stream[S] = {
+    def h(sa: (S, Stream[A])): Option[(S,(S,Stream[A]))] = sa._2 match{
+      case Cons(ah, at) => Some((sa._1, (f(sa._1, ah()), at())))
+      case Empty => None
+    }
+    unfold((a,this))(h)
+  }*/
 
   def foldRight[B](z: => B)(f: (A, => B) => B): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
     this match {
@@ -136,49 +145,60 @@ trait Stream[+A] {
     unfold(this)(helper)
   }
 
-  /* Test */
-  /*def takeUnfold_bad(n: Int): Stream[A] = this {
-    //    def f(k: Int, as: Stream[A]): Option[(A, (Int, Stream[A]))] = as match {
-    //      case Cons(ah, at) => if (k<=n) Some((ah():A, (k+1, at()))): Option[(A, (Int, Stream[A]))] else None: Option[(A, (Int, Stream[A]))]
-    //      case Empty => None: Option[(A, (Int, Stream[A]))]
-    //    }
-    def f(kas: Tuple2[Int,Stream[A]]): Option[(A, (Int, Stream[A]))] = kas._2 match {
-      case Cons(ah, at) => if (kas._1<=n) Some((ah():A, (kas._1+1, at()))): Option[(A, (Int, Stream[A]))] else None: Option[(A, (Int, Stream[A]))]
-      case Empty => None: Option[(A, (Int, Stream[A]))]
-    }
-    unfold(1, this)(f)
+  /*Tested in take*/
+  def takeUnfold(n:Int): Stream[A] = {
+    unfold((n, this))(
+      (ab) =>  ab._2 match {
+        case Cons(a, at) => if (ab._1>0) Some((a(),(ab._1-1, at()))) else None
+        case Empty => None
+      }
+    )
   }
 
-  /* Test */
-  def zipWith_bad[B,C](a: Stream[A], b: Stream[B])(f: (A,B) => C): Stream[C] = {
-    def h(ab: Tuple2[Stream[A], Stream[B]]): Option[(C,(Stream[A],Stream[B]))] = a match {
-      case Cons(ah, at) => b match {
+  def zipWith[B,C](b: Stream[B])(f: (A,B) => C): Stream[C] = {
+    def h(ab: (Stream[A], Stream[B])): Option[(C,(Stream[A],Stream[B]))] = ab._1 match {
+      case Cons(ah, at) => ab._2 match {
         case Cons(bh, bt) => Some((f(ah(), bh()), (at(), bt())))
         case Empty => None
       }
       case Empty => None
     }
-    unfold((a,b))(h)
-  }*/
+    unfold((this,b))(h)
+  }
 
-  /*def zipAll_bad[B](s2: Stream[B]): Stream[(Option[A], Option[B])] = {
-
-    def fb[C,D](ao:Option[C], as:Stream[C])(bs: Stream[D]): Option[((Stream[C], Stream[D]), (Option[C], Option[D]))] = bs match{
-      case Cons(bh, bt) => Some(((as, bt()),(ao, Some(bh()))))
-      case Empty => ao match {
-        case Some(_) => Some(((as, Empty),(ao, None)))
-        case None => None}
+  def zipWithNoUnfold[B,C](b: Stream[B])(f: (A,B) => C): Stream[C] = this match {
+    case Cons(ah, at) => b match {
+      case Cons(bh, bt) => cons( f(ah(), bh()), at().zipWithNoUnfold(bt())(f))
+      case Empty => Empty
     }
+    case Empty => Empty
+  }
 
-    def f(ab: Tuple2[Stream[A], Stream[B]]): Option[((Stream[A], Stream[B]),(Option[A], Option[B]))] = ab._1 match {
-      case Cons(ah, at) => fb(Some(ah()), at())(ab._2)
-      case Empty => fb(None, Empty)(ab._2)
+  /*Test*/
+  def zipAll[B](s2: Stream[B]): Stream[(Option[A], Option[B])] = {
+
+    def h(ab: (Stream[A], Stream[B])): Option[((Option[A], Option[B]), (Stream[A], Stream[B]))] = ab match {
+      case (Cons(ah, at), Cons(bh,bt)) => Some(((Some(ah()), Some(bh())), (at(),bt())))
+      case (Empty, Cons(bh,bt)) => Some(((None, Some(bh())), (Empty,bt())))
+      case (Cons(ah, at), Empty) => Some(((Some(ah()), None), (at(),Empty) ))
+      case (Empty, Empty) => None
+    }
+    unfold((this, s2))(h)
+  }
+
+
+  def startsWith[A](s: Stream[A]): Boolean = {
+    zipWith(s)((a,b)=> a==b).forAll(b => b)
+  }
+
+  def tails: Stream[Stream[A]] = {
+    unfold(this)(
+      (s: Stream[A]) => s match {
+        case Cons(a, at) => Some(s, at())
+        case Empty => None
       }
-    unfold((this, s2))(f)
-  }*/
-
-
-  def startsWith[B](s: Stream[B]): Boolean = ???
+    )
+  }
 }
 
 case object Empty extends Stream[Nothing]

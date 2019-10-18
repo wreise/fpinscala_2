@@ -47,6 +47,7 @@ class StreamTest extends FlatSpec {
   "take" should "take the first elements" in {
     val s: Stream[Int] = Stream(1,2,3)
     assert(s.take(2).toList == Stream(1,2).toList)
+    assert(s.takeUnfold(2).toList == Stream(1,2).toList)
 
   }
 
@@ -99,5 +100,42 @@ class StreamTest extends FlatSpec {
     val l: Stream[Int] = Stream(1,2,3)
     val f = (a:Int) => a+1
     assert(l.mapUnfold(f).toList == l.map(f).toList)
+  }
+
+  "zipWith" should "use two streams as pairs of arguments, passed to a function" in {
+    val l = Stream(1,2,3)
+    val l2 = Stream(4,1,4,-1)
+    val f = (a:Int,b:Int) => a+b
+    assert(l.zipWith(l2)(f).toList == Stream(5,3,7).toList)
+    assert(l2.zipWith(l)(f).toList == Stream(5,3,7).toList)
+  }
+
+  "startsWith" should "output if the stream starts with the given stream" in {
+    val ref = Stream(1,4,3,2,5)
+    val queryPos = Stream(1,4)
+    val queryNeg = Stream(0,2)
+    val queryPosLong = Stream(1,4,3,2,5, -1)
+    assert(ref.startsWith(queryPos))
+    assert(ref.startsWith(queryPosLong))
+    assert(!ref.startsWith(queryNeg))
+  }
+
+  "tails" should "yield all the end substreams" in {
+    val ref = Stream(1,4,5)
+    val res = Stream(Stream(1,4,5), Stream(4,5), Stream(5))
+    val convert = (s:Stream[Stream[Int]]) => s.map( a=> a.toList).toList
+    assert(convert(ref.tails) == convert(res))
+  }
+
+  "zipAll" should "use options until exhausted" in {
+    val l = Stream(1,2)
+    val l2 = Stream(4,5,6)
+    assert(l.zipAll(l2).toList == Stream((Some(1), Some(4)), (Some(2), Some(5)), (None, Some(6))).toList)
+  }
+
+  "scanRight" should "show the successive operations performed on a stream" in {
+    val l = Stream(1,2,3)
+    val res = Stream(6, 5, 3, 0)
+    assert(l.scanRight(0)((a,b) =>a+b).toList == res.toList)
   }
 }
